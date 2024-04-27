@@ -1,3 +1,4 @@
+import 'package:bloc_crud/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'blocs/user/user_bloc.dart';
@@ -24,16 +25,17 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: false,
         ),
-        home: const MyHomePage(),
+        home: MyHomePage(),
       ),
     );
   }
 }
 
 class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
+  MyHomePage({super.key});
 
-  void _incrementCounter() {}
+  final TextEditingController name = TextEditingController();
+  final TextEditingController email = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -45,31 +47,38 @@ class MyHomePage extends StatelessWidget {
       body: BlocBuilder<UserBloc, UserState>(
         builder: (context, state) {
           if (state is UserUpdated && state.users.isNotEmpty) {
-            final user = state.users;
+            final users = state.users;
             return ListView.builder(
-              itemCount: state.users.length,
+              itemCount: users.length,
               itemBuilder: (context, index) {
-                final user = state.users[index];
+                final user = users[index];
                 return ListTile(
                   title: Text(user.name),
                   subtitle: Text(user.email),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(onPressed: () {
-
-                      }, icon: Icon(Icons.edit)),
                       IconButton(
                           onPressed: () {
-                            context.read<UserBloc>().add(UpdateUser(user: user));
+                            name.text = user.name;
+                            email.text = user.email;
+                            showBottom(
+                                context: context, id: user.id, isEdit: true);
                           },
-                          icon: Icon(Icons.delete))
+                          icon: const Icon(Icons.edit)),
+                      IconButton(
+                          onPressed: () {
+                            context
+                                .read<UserBloc>()
+                                .add(DeleteUser(user: user));
+                          },
+                          icon: const Icon(Icons.delete))
                     ],
                   ),
                 );
               },
             );
-          }else{
+          } else {
             return const Center(
               child: Text("No item"),
             );
@@ -77,10 +86,57 @@ class MyHomePage extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: () {
+          final state = BlocProvider.of<UserBloc>(context).state;
+          final id = state.users.length + 1;
+          showBottom(context: context, id: id);
+        },
+        tooltip: 'Add User',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  Future showBottom(
+      {required BuildContext context, bool isEdit = false, required int id}) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding:
+              const EdgeInsets.all( 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: name,
+                  decoration: const InputDecoration(
+                      border: InputBorder.none, hintText: 'Name')),
+              TextField(
+                controller: email,
+                decoration: const InputDecoration(
+                    border: InputBorder.none, hintText: 'Email'),
+              ),
+              ElevatedButton(
+                  onPressed: () {
+                    final user =
+                        User(id: id, email: email.text, name: name.text);
+
+                    if (isEdit) {
+                      context.read<UserBloc>().add(UpdateUser(user: user));
+                    } else {
+                      context.read<UserBloc>().add(AddUser(user: user));
+                    }
+                    name.clear();
+                    email.clear();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Save"))
+            ],
+          ),
+        );
+      },
     );
   }
 }
